@@ -148,7 +148,7 @@ export function Dashboard() {
       {/* Status flow visualization */}
       <Card className="mb-8">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Statusflode</CardTitle>
+          <CardTitle className="text-base font-semibold">Statusflöde</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 overflow-x-auto pb-2">
