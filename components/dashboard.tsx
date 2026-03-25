@@ -15,7 +15,6 @@ import {
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { StatusChip } from "@/components/status-chip"
 import { PriorityIndicator } from "@/components/priority-indicator"
 import { useApp } from "@/lib/app-context"
 import { ROLE_LABELS, type Status } from "@/lib/types"
@@ -144,39 +143,6 @@ export function Dashboard() {
           />
         </div>
       )}
-
-      {/* Status flow visualization */}
-      <Card className="mb-8">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Statusflöde</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-2 overflow-x-auto pb-2">
-            {(
-              [
-                { status: "draft" as Status, count: stats.draft },
-                { status: "submitted" as Status, count: stats.submitted },
-                { status: "review" as Status, count: stats.review },
-                { status: "needs_more_info" as Status, count: stats.needsMoreInfo },
-                { status: "approved" as Status, count: stats.approved },
-                { status: "planned" as Status, count: stats.planned },
-                { status: "ready" as Status, count: stats.ready },
-                { status: "completed" as Status, count: stats.completed },
-              ] as const
-            ).map((item, i) => (
-              <div key={item.status} className="flex items-center gap-2">
-                <div className="flex flex-col items-center gap-1 rounded-lg border border-border bg-card p-3 min-w-[100px]">
-                  <StatusChip status={item.status} />
-                  <span className="text-lg font-bold text-foreground">{item.count}</span>
-                </div>
-                {i < 7 && (
-                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                )}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Aktiva ärenden - tre kolumner */}
       <div className="mb-6">

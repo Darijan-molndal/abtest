@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   User,
+  GitBranch,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useApp } from "@/lib/app-context"
@@ -34,6 +35,7 @@ import { Separator } from "@/components/ui/separator"
 const NAV_ITEMS = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/inbox", label: "Inkorg", icon: Inbox, badge: 3 },
+  { href: "/statusflow", label: "Statusflöde", icon: GitBranch },
   { href: "/requests", label: "Alla arenden", icon: FileText },
   // { href: "/calendar", label: "Planering", icon: CalendarDays },
   // { href: "/settings", label: "Installningar", icon: Settings },
