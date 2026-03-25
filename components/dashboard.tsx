@@ -81,6 +81,11 @@ export function Dashboard() {
     [requests]
   )
 
+  const kompletteringar = useMemo(
+    () => requests.filter((r) => r.status === "needs_more_info" || r.status === "draft"),
+    [requests]
+  )
+
   const getRequestsForCategory = (category: CategoryKey): WorkRequest[] => {
     switch (category) {
       case "submitted":
@@ -243,7 +248,7 @@ export function Dashboard() {
             </Button>
           </Link>
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {/* Kolumn 1: Arbetsbegäran */}
           <Card>
             <CardHeader className="pb-3">
@@ -317,6 +322,37 @@ export function Dashboard() {
                   <p className="px-4 py-3 text-sm text-muted-foreground">Inga driftordrar under utförande</p>
                 ) : (
                   driftordrarUnderUtforande.map((req) => (
+                    <Link
+                      key={req.id}
+                      href={`/requests/${req.id}`}
+                      className="flex flex-col gap-1 px-4 py-3 hover:bg-accent transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-muted-foreground">{req.id}</span>
+                        <PriorityIndicator priority={req.priority} />
+                      </div>
+                      <span className="text-sm font-medium text-foreground truncate">
+                        {req.title}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{req.facility}</span>
+                    </Link>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Kolumn 4: Kompletteringar */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold">Kompletteringar</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-border">
+                {kompletteringar.length === 0 ? (
+                  <p className="px-4 py-3 text-sm text-muted-foreground">Inga kompletteringar</p>
+                ) : (
+                  kompletteringar.map((req) => (
                     <Link
                       key={req.id}
                       href={`/requests/${req.id}`}
