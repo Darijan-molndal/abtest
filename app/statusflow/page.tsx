@@ -4,53 +4,42 @@ import { useMemo } from "react"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { StatusChip } from "@/components/status-chip"
 import { PriorityIndicator } from "@/components/priority-indicator"
 import { AppProvider, useApp } from "@/lib/app-context"
 import { AppShell } from "@/components/app-shell"
 import type { Status } from "@/lib/types"
 
+// Nya kategorier för statusflödet
+type FlowCategory = {
+  id: string
+  label: string
+  statuses: Status[]
+}
+
+const FLOW_CATEGORIES: FlowCategory[] = [
+  { id: "inkommen", label: "Inkommen arbetsbegäran", statuses: ["submitted"] },
+  { id: "begaran_godkand", label: "Arbetsbegäran godkänd", statuses: ["approved"] },
+  { id: "driftorder_skriven", label: "Driftorder skriven", statuses: ["review"] },
+  { id: "driftorder_godkand", label: "Driftorder godkänd", statuses: ["planned"] },
+  { id: "under_utforande", label: "Driftorder under utförande", statuses: ["ready"] },
+  { id: "avslutad", label: "Avslutad", statuses: ["completed"] },
+]
+
 function StatusFlowContent() {
   const { requests } = useApp()
 
-  const stats = useMemo(() => {
-    const byStatus = (s: Status) => requests.filter((r) => r.status === s).length
-    return {
-      draft: byStatus("draft"),
-      submitted: byStatus("submitted"),
-      review: byStatus("review"),
-      needsMoreInfo: byStatus("needs_more_info"),
-      approved: byStatus("approved"),
-      planned: byStatus("planned"),
-      ready: byStatus("ready"),
-      completed: byStatus("completed"),
-    }
+  const categoryData = useMemo(() => {
+    return FLOW_CATEGORIES.map((category) => {
+      const categoryRequests = requests.filter((r) => 
+        category.statuses.includes(r.status)
+      )
+      return {
+        ...category,
+        count: categoryRequests.length,
+        requests: categoryRequests,
+      }
+    })
   }, [requests])
-
-  const requestsByStatus = useMemo(() => {
-    const groupByStatus = (s: Status) => requests.filter((r) => r.status === s)
-    return {
-      draft: groupByStatus("draft"),
-      submitted: groupByStatus("submitted"),
-      review: groupByStatus("review"),
-      needs_more_info: groupByStatus("needs_more_info"),
-      approved: groupByStatus("approved"),
-      planned: groupByStatus("planned"),
-      ready: groupByStatus("ready"),
-      completed: groupByStatus("completed"),
-    }
-  }, [requests])
-
-  const statusOrder: Status[] = [
-    "draft",
-    "submitted",
-    "review",
-    "needs_more_info",
-    "approved",
-    "planned",
-    "ready",
-    "completed",
-  ]
 
   return (
     <div className="p-6">
@@ -69,24 +58,15 @@ function StatusFlowContent() {
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-2 overflow-x-auto pb-2">
-            {(
-              [
-                { status: "draft" as Status, count: stats.draft },
-                { status: "submitted" as Status, count: stats.submitted },
-                { status: "review" as Status, count: stats.review },
-                { status: "needs_more_info" as Status, count: stats.needsMoreInfo },
-                { status: "approved" as Status, count: stats.approved },
-                { status: "planned" as Status, count: stats.planned },
-                { status: "ready" as Status, count: stats.ready },
-                { status: "completed" as Status, count: stats.completed },
-              ] as const
-            ).map((item, i) => (
-              <div key={item.status} className="flex items-center gap-2">
-                <div className="flex flex-col items-center gap-1 rounded-lg border border-border bg-card p-3 min-w-[100px]">
-                  <StatusChip status={item.status} />
-                  <span className="text-lg font-bold text-foreground">{item.count}</span>
+            {categoryData.map((category, i) => (
+              <div key={category.id} className="flex items-center gap-2">
+                <div className="flex flex-col items-center gap-1 rounded-lg border border-border bg-card p-3 min-w-[140px]">
+                  <span className="text-xs font-medium text-muted-foreground text-center whitespace-nowrap">
+                    {category.label}
+                  </span>
+                  <span className="text-lg font-bold text-foreground">{category.count}</span>
                 </div>
-                {i < 7 && (
+                {i < categoryData.length - 1 && (
                   <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                 )}
               </div>
@@ -95,24 +75,24 @@ function StatusFlowContent() {
         </CardContent>
       </Card>
 
-      {/* Detailed view per status */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statusOrder.map((status) => (
-          <Card key={status}>
+      {/* Detailed view per category */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {categoryData.map((category) => (
+          <Card key={category.id}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <StatusChip status={status} />
+                <span className="text-sm font-semibold text-foreground">{category.label}</span>
                 <span className="text-sm font-medium text-muted-foreground">
-                  {requestsByStatus[status].length} st
+                  {category.count} st
                 </span>
               </div>
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-border max-h-64 overflow-y-auto">
-                {requestsByStatus[status].length === 0 ? (
+                {category.requests.length === 0 ? (
                   <p className="px-4 py-3 text-sm text-muted-foreground">Inga ärenden</p>
                 ) : (
-                  requestsByStatus[status].map((req) => (
+                  category.requests.map((req) => (
                     <Link
                       key={req.id}
                       href={`/requests/${req.id}`}
