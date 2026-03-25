@@ -53,7 +53,7 @@ export const MOCK_REQUESTS: WorkRequest[] = [
 
   {
     id: "ARB-1003",
-    title: "Uppgradering styrskap reaktor 1",
+    title: "Komplettering arbetsbegäran 5",
     description:
       "Byte av PLC-modul i styrskap R1-SC-04. Kraver nedstangning av delsystem och noggrant igangkorningsforfarande.",
     facility: "Anlaggning A - Reaktor 1",
@@ -344,7 +344,7 @@ export const MOCK_REQUESTS: WorkRequest[] = [
   },
   {
     id: "ARB-1006",
-    title: "Byte av filter i ventilationssystem",
+    title: "Komplettering driftorder 4",
     description: "Planerat filterbyte i ventilationssystem VS-3. Standardunderhall.",
     facility: "Anlaggning B - Turbin 2",
     object: "VS-3",
