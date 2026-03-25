@@ -26,18 +26,27 @@ const MAIN_FLOW_CATEGORIES: FlowCategory[] = [
   { id: "avslutad", label: "Avslutad", statuses: ["completed"] },
 ]
 
-// Sidoflöde för komplettering
-const SIDE_FLOW_CATEGORY: FlowCategory = { 
-  id: "komplettering", 
+// Sidoflöden för komplettering
+const SIDE_FLOW_ARBETSBEGARAN: FlowCategory = { 
+  id: "komplettering_arbetsbegaran", 
   label: "Komplettering arbetsbegäran", 
   statuses: ["needs_more_info"] 
+}
+
+const SIDE_FLOW_DRIFTORDER: FlowCategory = { 
+  id: "komplettering_driftorder", 
+  label: "Komplettering driftorder", 
+  statuses: ["draft"] // Använder "draft" för komplettering driftorder
 }
 
 // Alla kategorier för detaljvyn
 const ALL_CATEGORIES: FlowCategory[] = [
   MAIN_FLOW_CATEGORIES[0], // Inkommen
-  SIDE_FLOW_CATEGORY,      // Komplettering
-  ...MAIN_FLOW_CATEGORIES.slice(1), // Resten
+  SIDE_FLOW_ARBETSBEGARAN, // Komplettering arbetsbegäran
+  MAIN_FLOW_CATEGORIES[1], // Arbetsbegäran godkänd
+  MAIN_FLOW_CATEGORIES[2], // Driftorder skriven
+  SIDE_FLOW_DRIFTORDER,    // Komplettering driftorder
+  ...MAIN_FLOW_CATEGORIES.slice(3), // Resten
 ]
 
 function StatusFlowContent() {
@@ -56,12 +65,23 @@ function StatusFlowContent() {
     })
   }, [requests])
 
-  const sideFlowData = useMemo(() => {
+  const sideFlowArbetsbegaran = useMemo(() => {
     const categoryRequests = requests.filter((r) => 
-      SIDE_FLOW_CATEGORY.statuses.includes(r.status)
+      SIDE_FLOW_ARBETSBEGARAN.statuses.includes(r.status)
     )
     return {
-      ...SIDE_FLOW_CATEGORY,
+      ...SIDE_FLOW_ARBETSBEGARAN,
+      count: categoryRequests.length,
+      requests: categoryRequests,
+    }
+  }, [requests])
+
+  const sideFlowDriftorder = useMemo(() => {
+    const categoryRequests = requests.filter((r) => 
+      SIDE_FLOW_DRIFTORDER.statuses.includes(r.status)
+    )
+    return {
+      ...SIDE_FLOW_DRIFTORDER,
       count: categoryRequests.length,
       requests: categoryRequests,
     }
@@ -113,15 +133,28 @@ function StatusFlowContent() {
             ))}
           </div>
 
-          {/* Sidoflöde för komplettering */}
-          <div className="flex items-start gap-2 mt-4 ml-[70px]">
-            <div className="flex flex-col items-center">
+          {/* Sidoflöden för komplettering */}
+          <div className="flex items-start gap-2 mt-4">
+            {/* Komplettering arbetsbegäran - under "Inkommen arbetsbegäran" */}
+            <div className="flex flex-col items-center ml-[70px]">
               <ArrowDown className="h-4 w-4 text-muted-foreground" />
-              <div className="flex flex-col items-center gap-1 rounded-lg border border-border bg-card p-3 min-w-[140px] border-dashed border-orange-300">
+              <div className="flex flex-col items-center gap-1 rounded-lg border bg-card p-3 min-w-[140px] border-dashed border-orange-300">
                 <span className="text-xs font-medium text-orange-600 text-center whitespace-nowrap">
-                  {sideFlowData.label}
+                  {sideFlowArbetsbegaran.label}
                 </span>
-                <span className="text-lg font-bold text-foreground">{sideFlowData.count}</span>
+                <span className="text-lg font-bold text-foreground">{sideFlowArbetsbegaran.count}</span>
+              </div>
+              <CornerDownLeft className="h-4 w-4 text-muted-foreground mt-1 -scale-x-100" />
+            </div>
+
+            {/* Komplettering driftorder - under "Driftorder skriven" (position 2, index 2) */}
+            <div className="flex flex-col items-center ml-[232px]">
+              <ArrowDown className="h-4 w-4 text-muted-foreground" />
+              <div className="flex flex-col items-center gap-1 rounded-lg border bg-card p-3 min-w-[140px] border-dashed border-orange-300">
+                <span className="text-xs font-medium text-orange-600 text-center whitespace-nowrap">
+                  {sideFlowDriftorder.label}
+                </span>
+                <span className="text-lg font-bold text-foreground">{sideFlowDriftorder.count}</span>
               </div>
               <CornerDownLeft className="h-4 w-4 text-muted-foreground mt-1 -scale-x-100" />
             </div>
