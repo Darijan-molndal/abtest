@@ -98,8 +98,8 @@ export const MOCK_REQUESTS: WorkRequest[] = [
 
   {
     id: "ARB-1007",
-    title: "Arbetsorder 1",
-    description: "Arbetsorder 1 beskrivning.",
+    title: "Arbetsbegäran 1",
+    description: "Arbetsbegäran 1 beskrivning.",
     facility: "Anlaggning A - Reaktor 1",
     object: "AO-001",
     requestedStart: "2026-02-20",
@@ -124,8 +124,8 @@ export const MOCK_REQUESTS: WorkRequest[] = [
   },
   {
     id: "ARB-1008",
-    title: "Arbetsorder 2",
-    description: "Arbetsorder 2 beskrivning.",
+    title: "Arbetsbegäran 2",
+    description: "Arbetsbegäran 2 beskrivning.",
     facility: "Anlaggning B - Turbin 2",
     object: "AO-002",
     requestedStart: "2026-02-21",
@@ -150,8 +150,8 @@ export const MOCK_REQUESTS: WorkRequest[] = [
   },
   {
     id: "ARB-1009",
-    title: "Arbetsorder 3",
-    description: "Arbetsorder 3 beskrivning.",
+    title: "Arbetsbegäran 3",
+    description: "Arbetsbegäran 3 beskrivning.",
     facility: "Anlaggning C - Kylsystem",
     object: "AO-003",
     requestedStart: "2026-02-22",

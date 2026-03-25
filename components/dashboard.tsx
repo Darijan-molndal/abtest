@@ -156,15 +156,15 @@ export function Dashboard() {
           </Link>
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {/* Kolumn 1: Arbetsordrar */}
+          {/* Kolumn 1: Arbetsbegäran */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold">Arbetsordrar</CardTitle>
+              <CardTitle className="text-sm font-semibold">Arbetsbegäran</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-border">
                 {arbetsordrar.length === 0 ? (
-                  <p className="px-4 py-3 text-sm text-muted-foreground">Inga arbetsordrar</p>
+                  <p className="px-4 py-3 text-sm text-muted-foreground">Inga arbetsbegäran</p>
                 ) : (
                   arbetsordrar.map((req) => (
                     <Link
