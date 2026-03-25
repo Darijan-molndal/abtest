@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import {
   FileText,
@@ -17,11 +17,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { PriorityIndicator } from "@/components/priority-indicator"
 import { useApp } from "@/lib/app-context"
-import { ROLE_LABELS, type Status } from "@/lib/types"
+import { ROLE_LABELS, type Status, type WorkRequest } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+
+type CategoryKey = "submitted" | "review" | "needsMoreInfo" | "approved" | "planned" | "draft" | "inskickade" | "planerade"
+
+const CATEGORY_TITLES: Record<CategoryKey, string> = {
+  submitted: "Inkommen arbetsbegäran",
+  review: "Skriven Driftorder",
+  needsMoreInfo: "Driftorder under utförande",
+  approved: "Skickat för komplettering",
+  planned: "Avslutade",
+  draft: "Mina utkast",
+  inskickade: "Inskickade",
+  planerade: "Planerade",
+}
 
 export function Dashboard() {
   const { currentRole, requests } = useApp()
+  const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(null)
 
   const stats = useMemo(() => {
     const byStatus = (s: Status) => requests.filter((r) => r.status === s).length
@@ -61,10 +81,69 @@ export function Dashboard() {
     [requests]
   )
 
+  const getRequestsForCategory = (category: CategoryKey): WorkRequest[] => {
+    switch (category) {
+      case "submitted":
+        return requests.filter((r) => r.status === "submitted")
+      case "review":
+        return requests.filter((r) => r.status === "review")
+      case "needsMoreInfo":
+        return requests.filter((r) => r.status === "needs_more_info")
+      case "approved":
+        return requests.filter((r) => r.status === "approved")
+      case "planned":
+        return requests.filter((r) => r.status === "planned" || r.status === "completed")
+      case "draft":
+        return requests.filter((r) => r.status === "draft")
+      case "inskickade":
+        return requests.filter((r) => r.status === "submitted" || r.status === "review")
+      case "planerade":
+        return requests.filter((r) => r.status === "planned" || r.status === "ready")
+      default:
+        return []
+    }
+  }
+
+  const selectedRequests = selectedCategory ? getRequestsForCategory(selectedCategory) : []
+
   const isReviewer = currentRole === "controlroom" || currentRole === "shiftlead1" || currentRole === "shiftlead2"
 
   return (
     <div className="p-6">
+      {/* Dialog för att visa ärenden i vald kategori */}
+      <Dialog open={selectedCategory !== null} onOpenChange={(open) => !open && setSelectedCategory(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>{selectedCategory ? CATEGORY_TITLES[selectedCategory] : ""}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto">
+            {selectedRequests.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4">Inga ärenden i denna kategori.</p>
+            ) : (
+              <div className="divide-y divide-border">
+                {selectedRequests.map((req) => (
+                  <Link
+                    key={req.id}
+                    href={`/requests/${req.id}`}
+                    onClick={() => setSelectedCategory(null)}
+                    className="flex flex-col gap-1 px-4 py-3 hover:bg-accent transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono text-muted-foreground">{req.id}</span>
+                      <PriorityIndicator priority={req.priority} />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">
+                      {req.title}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{req.facility}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Page header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
@@ -89,30 +168,35 @@ export function Dashboard() {
             value={stats.submitted}
             icon={Inbox}
             variant="blue"
+            onClick={() => setSelectedCategory("submitted")}
           />
           <StatCard
             title="Skriven Driftorder"
             value={stats.review}
             icon={Clock}
             variant="amber"
+            onClick={() => setSelectedCategory("review")}
           />
           <StatCard
             title="Driftorder under utförande"
             value={stats.needsMoreInfo}
             icon={AlertTriangle}
             variant="orange"
+            onClick={() => setSelectedCategory("needsMoreInfo")}
           />
           <StatCard
             title="Skickat för komplettering"
             value={stats.approved}
             icon={Send}
             variant="blue"
+            onClick={() => setSelectedCategory("approved")}
           />
           <StatCard
             title="Avslutade"
             value={stats.planned}
             icon={CalendarDays}
             variant="emerald"
+            onClick={() => setSelectedCategory("planned")}
           />
         </div>
       ) : (
@@ -122,24 +206,28 @@ export function Dashboard() {
             value={stats.draft}
             icon={FileText}
             variant="default"
+            onClick={() => setSelectedCategory("draft")}
           />
           <StatCard
             title="Inskickade"
             value={stats.submitted + stats.review}
             icon={Send}
             variant="blue"
+            onClick={() => setSelectedCategory("inskickade")}
           />
           <StatCard
             title="Komplettering kravs"
             value={stats.needsMoreInfo}
             icon={AlertTriangle}
             variant="orange"
+            onClick={() => setSelectedCategory("needsMoreInfo")}
           />
           <StatCard
             title="Planerade"
             value={stats.planned + stats.ready}
             icon={CheckCircle2}
             variant="emerald"
+            onClick={() => setSelectedCategory("planerade")}
           />
         </div>
       )}
@@ -259,11 +347,13 @@ function StatCard({
   value,
   icon: Icon,
   variant = "default",
+  onClick,
 }: {
   title: string
   value: number
   icon: React.ElementType
   variant?: "default" | "blue" | "amber" | "orange" | "emerald"
+  onClick?: () => void
 }) {
   const iconColors = {
     default: "text-muted-foreground",
@@ -274,7 +364,12 @@ function StatCard({
   }
 
   return (
-    <Card>
+    <Card 
+      className={cn(
+        onClick && "cursor-pointer hover:bg-accent/50 transition-colors"
+      )}
+      onClick={onClick}
+    >
       <CardContent className="flex items-center gap-4 p-5">
         <div className={cn("rounded-lg bg-muted p-2.5", iconColors[variant])}>
           <Icon className="h-5 w-5" />
