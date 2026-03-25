@@ -17,6 +17,7 @@ type FlowCategory = {
 }
 
 const FLOW_CATEGORIES: FlowCategory[] = [
+  { id: "komplettering", label: "Komplettering arbetsbegäran", statuses: ["needs_more_info"] },
   { id: "inkommen", label: "Inkommen arbetsbegäran", statuses: ["submitted"] },
   { id: "begaran_godkand", label: "Arbetsbegäran godkänd", statuses: ["approved"] },
   { id: "driftorder_skriven", label: "Driftorder skriven", statuses: ["review"] },
