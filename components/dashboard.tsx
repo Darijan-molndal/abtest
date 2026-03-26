@@ -26,17 +26,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
-type CategoryKey = "submitted" | "review" | "needsMoreInfo" | "approved" | "planned" | "draft" | "inskickade" | "planerade"
+type CategoryKey = "submitted" | "review" | "godkandDriftorder" | "needsMoreInfo" | "approved" | "planned" | "draft" | "inskickade" | "planerade" | "ready"
 
 const CATEGORY_TITLES: Record<CategoryKey, string> = {
   submitted: "Inkommen arbetsbegäran",
   review: "Skriven Driftorder",
+  godkandDriftorder: "Kontrollerad och godkänd driftorder",
   needsMoreInfo: "Driftorder under utförande",
   approved: "Skickat för komplettering",
   planned: "Avslutade",
   draft: "Mina utkast",
   inskickade: "Inskickade",
   planerade: "Planerade",
+  ready: "Driftorder under utförande",
 }
 
 export function Dashboard() {
@@ -92,6 +94,8 @@ export function Dashboard() {
         return requests.filter((r) => r.status === "submitted")
       case "review":
         return requests.filter((r) => r.status === "review")
+      case "godkandDriftorder":
+        return requests.filter((r) => r.status === "planned")
       case "needsMoreInfo":
         return requests.filter((r) => r.status === "needs_more_info")
       case "approved":
@@ -104,6 +108,8 @@ export function Dashboard() {
         return requests.filter((r) => r.status === "submitted" || r.status === "review")
       case "planerade":
         return requests.filter((r) => r.status === "planned" || r.status === "ready")
+      case "ready":
+        return requests.filter((r) => r.status === "ready")
       default:
         return []
     }
@@ -167,7 +173,7 @@ export function Dashboard() {
 
       {/* KPI cards */}
       {isReviewer ? (
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <StatCard
             title="Inkommen arbetsbegäran"
             value={stats.submitted}
@@ -183,11 +189,18 @@ export function Dashboard() {
             onClick={() => setSelectedCategory("review")}
           />
           <StatCard
+            title="Kontrollerad och godkänd driftorder"
+            value={stats.planned}
+            icon={CheckCircle2}
+            variant="emerald"
+            onClick={() => setSelectedCategory("godkandDriftorder")}
+          />
+          <StatCard
             title="Driftorder under utförande"
-            value={stats.needsMoreInfo}
+            value={stats.ready}
             icon={AlertTriangle}
             variant="orange"
-            onClick={() => setSelectedCategory("needsMoreInfo")}
+            onClick={() => setSelectedCategory("ready")}
           />
           <StatCard
             title="Skickat för komplettering"
@@ -198,7 +211,7 @@ export function Dashboard() {
           />
           <StatCard
             title="Avslutade"
-            value={stats.planned}
+            value={stats.completed}
             icon={CalendarDays}
             variant="emerald"
             onClick={() => setSelectedCategory("planned")}
