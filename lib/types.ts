@@ -1,5 +1,12 @@
 export type Role = "applicant" | "shiftlead1" | "shiftlead2" | "controlroom"
 
+export type Phase = "arbetsbegaran" | "driftorder"
+
+export const PHASE_LABELS: Record<Phase, string> = {
+  arbetsbegaran: "Arbetsbegäran",
+  driftorder: "Driftorder",
+}
+
 export type Status =
   | "draft"
   | "submitted"
@@ -87,6 +94,7 @@ export interface WorkRequest {
   duration: string
   riskImpact: string
   status: Status
+  phase: Phase
   priority: "low" | "medium" | "high" | "critical"
   createdBy: string
   createdByRole: Role

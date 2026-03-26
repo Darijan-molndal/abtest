@@ -126,6 +126,26 @@ export function RequestDetail({ requestId }: { requestId: string }) {
     })
   }
 
+  const handleCancelDriftorder = () => {
+    updateRequest(requestId, {
+      status: "approved",
+      updatedAt: new Date().toISOString(),
+      activityLog: [
+        ...request.activityLog,
+        {
+          id: `a${request.activityLog.length + 1}`,
+          timestamp: new Date().toISOString(),
+          actor: "Demo-anvandare",
+          role: currentRole,
+          action: "Avbröt driftorder - återgår till godkänd",
+        },
+      ],
+    })
+  }
+
+  // Kolla om ärendet är en driftorder under utförande
+  const isDriftorderUnderUtforande = request.status === "ready" && request.phase === "driftorder"
+
   return (
     <div className="flex h-full flex-col">
       {/* Sticky top bar */}
@@ -149,6 +169,17 @@ export function RequestDetail({ requestId }: { requestId: string }) {
         {/* Action buttons */}
         {isReviewer && (
           <div className="flex items-center gap-2">
+            {/* Avbryt driftorder-knapp för driftorder under utförande */}
+            {isDriftorderUnderUtforande && (
+              <Button 
+                size="sm" 
+                onClick={handleCancelDriftorder} 
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                <XCircle className="mr-1.5 h-4 w-4" />
+                Avbryt driftorder
+              </Button>
+            )}
             {(request.status === "review" || request.status === "submitted") && (
               <>
                 <Button size="sm" onClick={handleApprove} className="bg-emerald-600 hover:bg-emerald-700 text-white">

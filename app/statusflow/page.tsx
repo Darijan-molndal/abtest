@@ -7,36 +7,36 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PriorityIndicator } from "@/components/priority-indicator"
 import { AppProvider, useApp } from "@/lib/app-context"
 import { AppShell } from "@/components/app-shell"
-import type { Status } from "@/lib/types"
+import type { Status, Phase, WorkRequest } from "@/lib/types"
 
-// Nya kategorier för statusflödet
+// Nya kategorier för statusflödet med phase-stöd
 type FlowCategory = {
   id: string
   label: string
-  statuses: Status[]
+  filter: (r: WorkRequest) => boolean
 }
 
 // Huvudflödet
 const MAIN_FLOW_CATEGORIES: FlowCategory[] = [
-  { id: "inkommen", label: "Inkommen arbetsbegäran", statuses: ["submitted"] },
-  { id: "begaran_godkand", label: "Arbetsbegäran godkänd", statuses: ["approved"] },
-  { id: "driftorder_skriven", label: "Driftorder skriven", statuses: ["review"] },
-  { id: "driftorder_godkand", label: "Driftorder godkänd", statuses: ["planned"] },
-  { id: "under_utforande", label: "Driftorder under utförande", statuses: ["ready"] },
-  { id: "avslutad", label: "Avslutad", statuses: ["completed"] },
+  { id: "inkommen", label: "Inkommen arbetsbegäran", filter: (r) => r.status === "submitted" && r.phase === "arbetsbegaran" },
+  { id: "begaran_godkand", label: "Arbetsbegäran godkänd", filter: (r) => r.status === "approved" && r.phase === "arbetsbegaran" },
+  { id: "driftorder_skriven", label: "Driftorder skriven", filter: (r) => r.status === "planned" && r.phase === "driftorder" },
+  { id: "driftorder_godkand", label: "Driftorder godkänd", filter: (r) => r.status === "approved" && r.phase === "driftorder" },
+  { id: "under_utforande", label: "Driftorder under utförande", filter: (r) => r.status === "ready" && r.phase === "driftorder" },
+  { id: "avslutad", label: "Avslutad", filter: (r) => r.status === "completed" },
 ]
 
 // Sidoflöden för komplettering
 const SIDE_FLOW_ARBETSBEGARAN: FlowCategory = { 
   id: "komplettering_arbetsbegaran", 
   label: "Komplettering arbetsbegäran", 
-  statuses: ["needs_more_info"] 
+  filter: (r) => r.status === "needs_more_info" && r.phase === "arbetsbegaran"
 }
 
 const SIDE_FLOW_DRIFTORDER: FlowCategory = { 
   id: "komplettering_driftorder", 
   label: "Komplettering driftorder", 
-  statuses: ["draft"] // Använder "draft" för komplettering driftorder
+  filter: (r) => r.status === "needs_more_info" && r.phase === "driftorder"
 }
 
 // Alla kategorier för detaljvyn
@@ -54,9 +54,7 @@ function StatusFlowContent() {
 
   const mainFlowData = useMemo(() => {
     return MAIN_FLOW_CATEGORIES.map((category) => {
-      const categoryRequests = requests.filter((r) => 
-        category.statuses.includes(r.status)
-      )
+      const categoryRequests = requests.filter(category.filter)
       return {
         ...category,
         count: categoryRequests.length,
@@ -66,9 +64,7 @@ function StatusFlowContent() {
   }, [requests])
 
   const sideFlowArbetsbegaran = useMemo(() => {
-    const categoryRequests = requests.filter((r) => 
-      SIDE_FLOW_ARBETSBEGARAN.statuses.includes(r.status)
-    )
+    const categoryRequests = requests.filter(SIDE_FLOW_ARBETSBEGARAN.filter)
     return {
       ...SIDE_FLOW_ARBETSBEGARAN,
       count: categoryRequests.length,
@@ -77,9 +73,7 @@ function StatusFlowContent() {
   }, [requests])
 
   const sideFlowDriftorder = useMemo(() => {
-    const categoryRequests = requests.filter((r) => 
-      SIDE_FLOW_DRIFTORDER.statuses.includes(r.status)
-    )
+    const categoryRequests = requests.filter(SIDE_FLOW_DRIFTORDER.filter)
     return {
       ...SIDE_FLOW_DRIFTORDER,
       count: categoryRequests.length,
@@ -89,9 +83,7 @@ function StatusFlowContent() {
 
   const allCategoryData = useMemo(() => {
     return ALL_CATEGORIES.map((category) => {
-      const categoryRequests = requests.filter((r) => 
-        category.statuses.includes(r.status)
-      )
+      const categoryRequests = requests.filter(category.filter)
       return {
         ...category,
         count: categoryRequests.length,
