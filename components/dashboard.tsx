@@ -30,10 +30,10 @@ type CategoryKey = "submitted" | "review" | "godkandDriftorder" | "needsMoreInfo
 
 const CATEGORY_TITLES: Record<CategoryKey, string> = {
   submitted: "Inkommen arbetsbegäran",
-  review: "Skriven Driftorder",
+  review: "Driftorder skriven",
   godkandDriftorder: "Kontrollerad och godkänd driftorder",
-  needsMoreInfo: "Driftorder under utförande",
-  approved: "Skickat för komplettering",
+  needsMoreInfo: "Skickat för komplettering",
+  approved: "Arbetsbegäran godkänd",
   planned: "Avslutade",
   draft: "Mina utkast",
   inskickade: "Inskickade",
@@ -46,16 +46,24 @@ export function Dashboard() {
   const [selectedCategory, setSelectedCategory] = useState<CategoryKey | null>(null)
 
   const stats = useMemo(() => {
-    const byStatus = (s: Status) => requests.filter((r) => r.status === s).length
     return {
-      draft: byStatus("draft"),
-      submitted: byStatus("submitted"),
-      review: byStatus("review"),
-      needsMoreInfo: byStatus("needs_more_info"),
-      approved: byStatus("approved"),
-      planned: byStatus("planned"),
-      ready: byStatus("ready"),
-      completed: byStatus("completed"),
+      // Inkommen arbetsbegäran
+      inkommenArbetsbegaran: requests.filter((r) => r.status === "submitted" && r.phase === "arbetsbegaran").length,
+      // Arbetsbegäran godkänd  
+      arbetsbegäranGodkand: requests.filter((r) => r.status === "approved" && r.phase === "arbetsbegaran").length,
+      // Driftorder skriven
+      driftorderSkriven: requests.filter((r) => r.status === "planned" && r.phase === "driftorder").length,
+      // Driftorder godkänd
+      driftorderGodkand: requests.filter((r) => r.status === "approved" && r.phase === "driftorder").length,
+      // Driftorder under utförande
+      driftorderUnderUtforande: requests.filter((r) => r.status === "ready" && r.phase === "driftorder").length,
+      // Avslutad
+      completed: requests.filter((r) => r.status === "completed").length,
+      // Komplettering arbetsbegäran
+      kompletteringArbetsbegaran: requests.filter((r) => r.status === "needs_more_info" && r.phase === "arbetsbegaran").length,
+      // Komplettering driftorder
+      kompletteringDriftorder: requests.filter((r) => r.status === "needs_more_info" && r.phase === "driftorder").length,
+      // Totalt
       total: requests.length,
     }
   }, [requests])
@@ -69,52 +77,52 @@ export function Dashboard() {
   )
 
   const arbetsordrar = useMemo(
-    () => requests.filter((r) => r.status === "submitted"),
+    () => requests.filter((r) => r.status === "submitted" && r.phase === "arbetsbegaran"),
     [requests]
   )
 
   const skrivnaDriftordrar = useMemo(
-    () => requests.filter((r) => r.status === "review" || r.status === "approved"),
+    () => requests.filter((r) => r.status === "planned" && r.phase === "driftorder"),
     [requests]
   )
 
   const godkandaDriftordrar = useMemo(
-    () => requests.filter((r) => r.status === "planned"),
+    () => requests.filter((r) => r.status === "approved" && r.phase === "driftorder"),
     [requests]
   )
 
   const driftordrarUnderUtforande = useMemo(
-    () => requests.filter((r) => r.status === "ready"),
+    () => requests.filter((r) => r.status === "ready" && r.phase === "driftorder"),
     [requests]
   )
 
   const kompletteringar = useMemo(
-    () => requests.filter((r) => r.status === "needs_more_info" || r.status === "draft"),
+    () => requests.filter((r) => r.status === "needs_more_info"),
     [requests]
   )
 
   const getRequestsForCategory = (category: CategoryKey): WorkRequest[] => {
     switch (category) {
       case "submitted":
-        return requests.filter((r) => r.status === "submitted")
+        return requests.filter((r) => r.status === "submitted" && r.phase === "arbetsbegaran")
       case "review":
-        return requests.filter((r) => r.status === "review")
+        return requests.filter((r) => r.status === "planned" && r.phase === "driftorder")
       case "godkandDriftorder":
-        return requests.filter((r) => r.status === "planned")
+        return requests.filter((r) => r.status === "approved" && r.phase === "driftorder")
       case "needsMoreInfo":
         return requests.filter((r) => r.status === "needs_more_info")
       case "approved":
-        return requests.filter((r) => r.status === "approved")
+        return requests.filter((r) => r.status === "approved" && r.phase === "arbetsbegaran")
       case "planned":
-        return requests.filter((r) => r.status === "planned" || r.status === "completed")
+        return requests.filter((r) => r.status === "completed")
       case "draft":
         return requests.filter((r) => r.status === "draft")
       case "inskickade":
-        return requests.filter((r) => r.status === "submitted" || r.status === "review")
+        return requests.filter((r) => (r.status === "submitted" || r.status === "approved") && r.phase === "arbetsbegaran")
       case "planerade":
         return requests.filter((r) => r.status === "planned" || r.status === "ready")
       case "ready":
-        return requests.filter((r) => r.status === "ready")
+        return requests.filter((r) => r.status === "ready" && r.phase === "driftorder")
       default:
         return []
     }
@@ -181,38 +189,38 @@ export function Dashboard() {
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <StatCard
             title="Inkommen arbetsbegäran"
-            value={stats.submitted}
+            value={stats.inkommenArbetsbegaran}
             icon={Inbox}
             variant="blue"
             onClick={() => setSelectedCategory("submitted")}
           />
           <StatCard
             title="Skriven Driftorder"
-            value={stats.review}
+            value={stats.driftorderSkriven}
             icon={Clock}
             variant="amber"
             onClick={() => setSelectedCategory("review")}
           />
           <StatCard
             title="Kontrollerad och godkänd driftorder"
-            value={stats.planned}
+            value={stats.driftorderGodkand}
             icon={CheckCircle2}
             variant="emerald"
             onClick={() => setSelectedCategory("godkandDriftorder")}
           />
           <StatCard
             title="Driftorder under utförande"
-            value={stats.ready}
+            value={stats.driftorderUnderUtforande}
             icon={AlertTriangle}
             variant="orange"
             onClick={() => setSelectedCategory("ready")}
           />
           <StatCard
             title="Skickat för komplettering"
-            value={stats.approved}
+            value={stats.kompletteringArbetsbegaran + stats.kompletteringDriftorder}
             icon={Send}
             variant="blue"
-            onClick={() => setSelectedCategory("approved")}
+            onClick={() => setSelectedCategory("needsMoreInfo")}
           />
           <StatCard
             title="Avslutade"
@@ -226,28 +234,28 @@ export function Dashboard() {
         <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             title="Mina utkast"
-            value={stats.draft}
+            value={0}
             icon={FileText}
             variant="default"
             onClick={() => setSelectedCategory("draft")}
           />
           <StatCard
             title="Inskickade"
-            value={stats.submitted + stats.review}
+            value={stats.inkommenArbetsbegaran + stats.arbetsbegäranGodkand}
             icon={Send}
             variant="blue"
             onClick={() => setSelectedCategory("inskickade")}
           />
           <StatCard
             title="Komplettering kravs"
-            value={stats.needsMoreInfo}
+            value={stats.kompletteringArbetsbegaran + stats.kompletteringDriftorder}
             icon={AlertTriangle}
             variant="orange"
             onClick={() => setSelectedCategory("needsMoreInfo")}
           />
           <StatCard
             title="Planerade"
-            value={stats.planned + stats.ready}
+            value={stats.driftorderSkriven + stats.driftorderUnderUtforande}
             icon={CheckCircle2}
             variant="emerald"
             onClick={() => setSelectedCategory("planerade")}
