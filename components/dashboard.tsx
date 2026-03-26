@@ -78,8 +78,13 @@ export function Dashboard() {
     [requests]
   )
 
+  const godkandaDriftordrar = useMemo(
+    () => requests.filter((r) => r.status === "planned"),
+    [requests]
+  )
+
   const driftordrarUnderUtforande = useMemo(
-    () => requests.filter((r) => r.status === "planned" || r.status === "ready"),
+    () => requests.filter((r) => r.status === "ready"),
     [requests]
   )
 
@@ -261,7 +266,7 @@ export function Dashboard() {
             </Button>
           </Link>
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {/* Kolumn 1: Arbetsbegäran */}
           <Card>
             <CardHeader className="pb-3">
@@ -324,7 +329,38 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Kolumn 3: Driftordrar under utförande */}
+          {/* Kolumn 3: Kontrollerad och godkänd driftorder */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold">Kontrollerad och godkänd driftorder</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-border">
+                {godkandaDriftordrar.length === 0 ? (
+                  <p className="px-4 py-3 text-sm text-muted-foreground">Inga godkända driftordrar</p>
+                ) : (
+                  godkandaDriftordrar.map((req) => (
+                    <Link
+                      key={req.id}
+                      href={`/requests/${req.id}`}
+                      className="flex flex-col gap-1 px-4 py-3 hover:bg-accent transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-muted-foreground">{req.id}</span>
+                        <PriorityIndicator priority={req.priority} />
+                      </div>
+                      <span className="text-sm font-medium text-foreground truncate">
+                        {req.title}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{req.facility}</span>
+                    </Link>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Kolumn 4: Driftordrar under utförande */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold">Driftordrar under utförande</CardTitle>
@@ -355,7 +391,7 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Kolumn 4: Kompletteringar */}
+          {/* Kolumn 5: Kompletteringar */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold">Kompletteringar</CardTitle>
