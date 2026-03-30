@@ -176,10 +176,10 @@ export function Dashboard() {
             Översikt
           </p>
         </div>
-        <Link href="/requests/new">
+        <Link href="/driftorder/new">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            Skapa Arbetsorder
+            Skapa Driftorder
           </Button>
         </Link>
       </div>
