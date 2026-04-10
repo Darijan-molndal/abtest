@@ -25,6 +25,12 @@ export function CreateDriftorderForm() {
   const [driftorderName, setDriftorderName] = useState("")
   const [createdBy, setCreatedBy] = useState("")
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
+  const [selectedArbetsbegaran, setSelectedArbetsbegaran] = useState("")
+
+  // Hämta alla godkända arbetsbegäran
+  const godkandaArbetsbegaran = requests.filter(
+    (r) => r.status === "approved" && r.phase === "arbetsbegaran"
+  )
 
   const newId = `ARB-${1000 + requests.length + 1}`
 
@@ -67,15 +73,18 @@ export function CreateDriftorderForm() {
   }
 
   const handleSubmit = () => {
-    if (!driftorderName.trim()) {
+    if (!driftorderName.trim() || !selectedArbetsbegaran) {
       return
     }
 
-    const facility = FACILITIES[0] || "HSP 10 kV"
+    // Hämta vald arbetsbegäran för att få anläggning och annan info
+    const valdArbetsbegaran = requests.find((r) => r.id === selectedArbetsbegaran)
+    const facility = valdArbetsbegaran?.facility || FACILITIES[0] || "HSP 10 kV"
+    
     const newReq: WorkRequest = {
       id: newId,
       title: driftorderName,
-      description: `Driftorder skapad av ${createdBy || "Okänd"}`,
+      description: `Driftorder baserad på arbetsbegäran ${selectedArbetsbegaran}. Skapad av ${createdBy || "Okänd"}`,
       facility,
       object: "",
       requestedStart: new Date().toISOString().split("T")[0],
@@ -115,7 +124,7 @@ export function CreateDriftorderForm() {
     router.push("/")
   }
 
-  const isValid = driftorderName.trim().length > 0
+  const isValid = driftorderName.trim().length > 0 && selectedArbetsbegaran.length > 0
 
   return (
     <div className="flex h-full flex-col">
@@ -145,6 +154,31 @@ export function CreateDriftorderForm() {
               <CardTitle>Driftorderuppgifter</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-6">
+              {/* Godkänd arbetsbegäran */}
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="arbetsbegaran">
+                  Godkänd arbetsbegäran <span className="text-destructive">*</span>
+                </Label>
+                <select
+                  id="arbetsbegaran"
+                  value={selectedArbetsbegaran}
+                  onChange={(e) => setSelectedArbetsbegaran(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="">Välj en godkänd arbetsbegäran</option>
+                  {godkandaArbetsbegaran.map((req) => (
+                    <option key={req.id} value={req.id}>
+                      {req.id} - {req.title}
+                    </option>
+                  ))}
+                </select>
+                {godkandaArbetsbegaran.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Det finns inga godkända arbetsbegäran att välja
+                  </p>
+                )}
+              </div>
+
               {/* Driftordernamn */}
               <div className="flex flex-col gap-2">
                 <Label htmlFor="driftorderName">
