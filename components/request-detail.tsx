@@ -44,6 +44,8 @@ export function RequestDetail({ requestId }: { requestId: string }) {
   const [showInfoModal, setShowInfoModal] = useState(false)
   const [showWordPreview, setShowWordPreview] = useState(false)
   const [selectedAttachment, setSelectedAttachment] = useState<string | null>(null)
+  const [showDriftorderKompletteringModal, setShowDriftorderKompletteringModal] = useState(false)
+  const [driftorderKompletteringComment, setDriftorderKompletteringComment] = useState("")
   const request = getRequest(requestId)
 
   if (!request) {
@@ -159,6 +161,37 @@ export function RequestDetail({ requestId }: { requestId: string }) {
   // Kolla om ärendet är en driftorder (skriven eller godkänd)
   const isDriftorder = request.phase === "driftorder"
   
+  // Kolla om ärendet är en skriven driftorder (för "Begär komplettering"-knappen)
+  const isSkivenDriftorder = request.status === "planned" && request.phase === "driftorder"
+
+  const handleDriftorderKomplettering = () => {
+    if (!driftorderKompletteringComment.trim()) return
+    
+    updateRequest(requestId, {
+      status: "needs_more_info",
+      updatedAt: new Date().toISOString(),
+      activityLog: [
+        ...request.activityLog,
+        {
+          id: `a${request.activityLog.length + 1}`,
+          timestamp: new Date().toISOString(),
+          actor: "Demo-anvandare",
+          role: currentRole,
+          action: `Begärde komplettering av driftorder. Kommentar: ${driftorderKompletteringComment}`,
+        },
+        {
+          id: `a${request.activityLog.length + 2}`,
+          timestamp: new Date().toISOString(),
+          actor: "System",
+          role: "shiftlead1",
+          action: `Notis: Komplettering begärd för driftorder ${request.id}. Meddelande: "${driftorderKompletteringComment}"`,
+        },
+      ],
+    })
+    setDriftorderKompletteringComment("")
+    setShowDriftorderKompletteringModal(false)
+  }
+  
   // Hämta Word-filer från attachments
   const wordAttachments = request.attachments.filter(
     (att) => att.type === "word" || att.name.endsWith(".doc") || att.name.endsWith(".docx")
@@ -201,6 +234,17 @@ export function RequestDetail({ requestId }: { requestId: string }) {
               >
                 <XCircle className="mr-1.5 h-4 w-4" />
                 Avbryt driftorder
+              </Button>
+            )}
+            {/* Begär komplettering-knapp för skrivna driftorder */}
+            {isSkivenDriftorder && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowDriftorderKompletteringModal(true)}
+              >
+                <MessageSquare className="mr-1.5 h-4 w-4" />
+                Begär komplettering
               </Button>
             )}
             {(request.status === "review" || request.status === "submitted") && (
@@ -692,6 +736,49 @@ export function RequestDetail({ requestId }: { requestId: string }) {
             <Button>
               <Download className="mr-1.5 h-4 w-4" />
               Ladda ner original
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Driftorder komplettering modal */}
+      <Dialog open={showDriftorderKompletteringModal} onOpenChange={setShowDriftorderKompletteringModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              Begär komplettering av driftorder
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Ange vad som behöver kompletteras för driftorder {request.id}. 
+            Driftledare 1 ({request.createdBy}) kommer att notifieras.
+          </p>
+          
+          <div className="flex flex-col gap-2">
+            <label htmlFor="driftorder-comment" className="text-sm font-medium">
+              Kommentar <span className="text-destructive">*</span>
+            </label>
+            <textarea
+              id="driftorder-comment"
+              placeholder="Beskriv vad som behöver kompletteras..."
+              value={driftorderKompletteringComment}
+              onChange={(e) => setDriftorderKompletteringComment(e.target.value)}
+              rows={4}
+              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setShowDriftorderKompletteringModal(false)}>
+              Avbryt
+            </Button>
+            <Button 
+              onClick={handleDriftorderKomplettering} 
+              disabled={!driftorderKompletteringComment.trim()}
+            >
+              <MessageSquare className="mr-1.5 h-4 w-4" />
+              Skicka begäran
             </Button>
           </div>
         </DialogContent>
