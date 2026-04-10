@@ -17,6 +17,8 @@ import {
   AlertTriangle,
   Shield,
   History,
+  Eye,
+  Download,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -30,10 +32,18 @@ import { GateProgress } from "@/components/gate-progress"
 import { useApp } from "@/lib/app-context"
 import { ROLE_LABELS, type WorkRequest } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 export function RequestDetail({ requestId }: { requestId: string }) {
   const { getRequest, currentRole, updateRequest } = useApp()
   const [showInfoModal, setShowInfoModal] = useState(false)
+  const [showWordPreview, setShowWordPreview] = useState(false)
+  const [selectedAttachment, setSelectedAttachment] = useState<string | null>(null)
   const request = getRequest(requestId)
 
   if (!request) {
@@ -146,6 +156,19 @@ export function RequestDetail({ requestId }: { requestId: string }) {
   // Kolla om ärendet är en driftorder under utförande
   const isDriftorderUnderUtforande = request.status === "ready" && request.phase === "driftorder"
 
+  // Kolla om ärendet är en driftorder (skriven eller godkänd)
+  const isDriftorder = request.phase === "driftorder"
+  
+  // Hämta Word-filer från attachments
+  const wordAttachments = request.attachments.filter(
+    (att) => att.type === "word" || att.name.endsWith(".doc") || att.name.endsWith(".docx")
+  )
+
+  const handleOpenWordPreview = (attachmentName: string) => {
+    setSelectedAttachment(attachmentName)
+    setShowWordPreview(true)
+  }
+
   return (
     <div className="flex h-full flex-col">
       {/* Sticky top bar */}
@@ -254,6 +277,54 @@ export function RequestDetail({ requestId }: { requestId: string }) {
                     <p className="text-sm text-foreground leading-relaxed">{request.description}</p>
                   </CardContent>
                 </Card>
+
+                {/* Bifogad Word-fil (endast för driftorder med bilagor) */}
+                {isDriftorder && wordAttachments.length > 0 && (
+                  <Card className="border-2 border-blue-200">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-blue-600" />
+                        Bifogad driftorderfil
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-col gap-3">
+                        {wordAttachments.map((att) => (
+                          <div
+                            key={att.id}
+                            className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-4"
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
+                                <FileText className="h-6 w-6 text-blue-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-foreground">{att.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {att.size} - Uppladdad av {att.uploadedBy}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleOpenWordPreview(att.name)}
+                              >
+                                <Eye className="mr-1.5 h-4 w-4" />
+                                Visa
+                              </Button>
+                              <Button variant="outline" size="sm">
+                                <Download className="mr-1.5 h-4 w-4" />
+                                Ladda ner
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Requisites panel */}
                 <Card className={cn(
@@ -550,6 +621,81 @@ export function RequestDetail({ requestId }: { requestId: string }) {
           setShowInfoModal(false)
         }}
       />
+
+      {/* Word-fil förhandsvisning modal */}
+      <Dialog open={showWordPreview} onOpenChange={setShowWordPreview}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-blue-600" />
+              {selectedAttachment}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto">
+            <div className="rounded-lg border border-border bg-muted/30 p-8">
+              <div className="mx-auto max-w-2xl bg-white shadow-lg rounded-lg p-8 min-h-[400px]">
+                <div className="border-b border-gray-200 pb-4 mb-6">
+                  <h1 className="text-xl font-bold text-gray-900">{request.title}</h1>
+                  <p className="text-sm text-gray-500 mt-1">Driftorder {request.id}</p>
+                </div>
+                
+                <div className="space-y-4 text-sm text-gray-700">
+                  <div>
+                    <h2 className="font-semibold text-gray-900 mb-1">Beskrivning</h2>
+                    <p>{request.description}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-1">Anläggning</h3>
+                      <p>{request.facility}</p>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-1">Objekt</h3>
+                      <p>{request.object || "-"}</p>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-1">Startdatum</h3>
+                      <p>{request.requestedStart}</p>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-1">Varaktighet</h3>
+                      <p>{request.duration || "-"}</p>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-1">Skapad av</h3>
+                    <p>{request.createdBy}</p>
+                  </div>
+                  
+                  {request.riskImpact && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-1">Risk / Konsekvens</h3>
+                      <p>{request.riskImpact}</p>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="mt-8 pt-4 border-t border-gray-200">
+                  <p className="text-xs text-gray-400 text-center">
+                    Detta är en förhandsvisning av driftorderns innehåll
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowWordPreview(false)}>
+              Stäng
+            </Button>
+            <Button>
+              <Download className="mr-1.5 h-4 w-4" />
+              Ladda ner original
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
