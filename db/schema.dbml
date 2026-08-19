@@ -1,197 +1,246 @@
 // =====================================================================
-// Arbetsbegäran / Driftorder - datamodell
+// Driftskärm 2 – Arbetsordrar
+// Datamodell för produktion (enligt sammanställt underlag).
 // Klistra in på https://dbdiagram.io för att visualisera.
+//
+// Kärnidé: ett ÄRENDE bär hela livscykeln. Arbetsbegäran (AB) och
+// Driftorder (DO) är 1:1 med ärendet. DO skapas alltid från en
+// godkänd AB inom SAMMA ärende – aldrig fristående.
+// Anläggning/objekt är fritext (stängt beslut: ingen registerintegration).
 // =====================================================================
 
 // ---------- Enums ----------
 
 Enum user_role {
-  applicant   [note: 'Ansökande']
-  shiftlead1  [note: 'Driftledare 1']
-  shiftlead2  [note: 'Driftledare 2']
-  controlroom [note: 'Kontrollrum']
+  bestallare  [note: 'Skapar och ser egna arbetsbegäran']
+  driftledare [note: 'Godkänner AB, skriver/kontrollerar DO, markerar arbete']
+  kontrollrum [note: 'Ser alla AB + dashboard/statusflöde']
+  admin       [note: 'Hanterar användare och roller']
 }
 
-Enum work_phase {
-  arbetsbegaran [note: 'Arbetsbegäran']
-  driftorder    [note: 'Driftorder']
+Enum arende_status {
+  utkast          [note: 'AB-utkast, ej inskickad']
+  inskickad       [note: 'AB inskickad för granskning']
+  komplettering_ab [note: 'AB skickad tillbaka för komplettering']
+  godkand_ab      [note: 'AB godkänd – redo för DO']
+  do_skriven      [note: 'DO skriven, väntar kontroll av DL2']
+  komplettering_do [note: 'DO skickad tillbaka för komplettering']
+  do_kontrollerad [note: 'DO kontrollerad och godkänd av DL2']
+  arbete_utfors   [note: 'Arbete pågår']
+  arbete_slutfort [note: 'Arbete slutfört']
+  nekad           [note: 'Slutstatus – AB nekad']
+  arkiverad       [note: 'Slutstatus – arkiverad']
 }
 
-Enum work_status {
-  draft           [note: 'Utkast']
-  submitted       [note: 'Inskickad']
-  review          [note: 'Granskning']
-  needs_more_info [note: 'Komplettering']
-  approved        [note: 'Godkänd']
-  rejected        [note: 'Avslagen']
-  planned         [note: 'Planerad']
-  ready           [note: 'REDO']
-  completed       [note: 'Avslutad']
+Enum risk_niva {
+  lag
+  medel
+  hog
+  kritisk
 }
 
-Enum work_priority {
-  low
-  medium
-  high
-  critical
+Enum aktor_roll {
+  kopplingsledare
+  kopplingsbitrade
+  elsakerhetsledare
+  delgiven_utforande [note: 'Delgiven för utförande']
+  delgiven_kannedom  [note: 'Delgiven för kännedom']
 }
 
-Enum document_format {
-  docx
-  pdf
+Enum bilaga_agare {
+  arbetsbegaran
+  driftorder
 }
 
-// ---------- Kärntabeller ----------
+Enum notis_typ {
+  ab_inskickad
+  ab_godkand
+  ab_nekad
+  komplettering_begard
+  do_skriven
+  do_godkand
+  do_komplettering
+  arbete_utfors
+  arbete_slutfort
+  tillagd_aktor
+}
+
+// ---------- Användare ----------
 
 Table users {
-  id         uuid        [pk, default: `gen_random_uuid()`]
-  name       varchar(120) [not null]
-  email      varchar(255) [not null, unique]
-  role       user_role    [not null]
-  active     boolean      [not null, default: true]
-  created_at timestamptz  [not null, default: `now()`]
-
-  Note: 'Användare med en roll i flödet (ansökande, driftledare, kontrollrum).'
-}
-
-Table facilities {
   id         uuid         [pk, default: `gen_random_uuid()`]
-  name       varchar(160) [not null, unique]
+  entra_id   varchar(64)  [unique, note: 'Objekt-id från Entra ID (null tills första login mappats)']
+  namn       varchar(120) [not null]
+  epost      varchar(255) [not null, unique]
+  roll       user_role    [note: 'NULL = väntar på behörighet (tilldelas av admin)']
+  mail_only  boolean      [not null, default: false, note: 'Får bara e-post, ej appkonto']
+  aktiv      boolean      [not null, default: true]
   created_at timestamptz  [not null, default: `now()`]
+  updated_at timestamptz  [not null, default: `now()`]
 
-  Note: 'Anläggning, t.ex. "Anläggning A - Reaktor 1".'
+  Note: 'Interna användare + roller. Roll cachas här för snabb åtkomst vid varje API-anrop.'
 }
 
-Table facility_objects {
-  id          uuid         [pk, default: `gen_random_uuid()`]
-  facility_id uuid         [not null, ref: > facilities.id]
-  designation varchar(80)  [not null, note: 'Objektsbeteckning, t.ex. "T2-L3"']
-  description varchar(255)
-  created_at  timestamptz  [not null, default: `now()`]
+// ---------- Ärende (bär hela livscykeln) ----------
 
-  Indexes {
-    (facility_id, designation) [unique]
-  }
-  Note: 'Objekt/utrustning som tillhör en anläggning.'
-}
-
-Table work_items {
-  id                uuid          [pk, default: `gen_random_uuid()`]
-  reference_no      varchar(20)   [not null, unique, note: 'Läsbart nr, t.ex. "ARB-1001"']
-  title             varchar(200)  [not null]
-  description       text
-  phase             work_phase    [not null]
-  status            work_status   [not null, default: 'draft']
-  priority          work_priority [not null, default: 'medium']
-
-  facility_id       uuid          [not null, ref: > facilities.id]
-  object_id         uuid          [ref: > facility_objects.id]
-
-  requested_start   date
-  duration          varchar(60)   [note: 'Fritext, t.ex. "4 timmar"']
-  risk_impact       text
-
-  // En driftorder skapas från en godkänd arbetsbegäran (självreferens).
-  source_request_id uuid          [ref: > work_items.id]
-
-  created_by        uuid          [not null, ref: > users.id]
-  assigned_to       uuid          [ref: > users.id]
-
-  created_at        timestamptz   [not null, default: `now()`]
-  updated_at        timestamptz   [not null, default: `now()`]
+Table arenden {
+  id           uuid          [pk, default: `gen_random_uuid()`]
+  arende_nr    varchar(20)   [not null, unique, note: 'T.ex. "ARB-2026-001"']
+  status       arende_status [not null, default: 'utkast']
+  created_at   timestamptz   [not null, default: `now()`]
+  updated_at   timestamptz   [not null, default: `now()`]
+  arkiverad_at timestamptz   [note: 'Sätts vid arkivering']
+  deleted_at   timestamptz   [note: 'Mjuk borttagning']
 
   Indexes {
     status
-    phase
-    facility_id
-    (phase, status)
+    (status, created_at)
   }
-  Note: 'Arbetsbegäran OCH driftorder i samma tabell, åtskilda via phase.'
+  Note: 'Ett ärende = en AB (1:1) + eventuellt en DO (1:1). Status styr flödet.'
 }
 
-// ---------- Beroende tabeller (per work_item) ----------
+// ---------- Arbetsbegäran (1:1 med ärende) ----------
 
-Table requisites {
-  id           uuid         [pk, default: `gen_random_uuid()`]
-  work_item_id uuid         [not null, ref: > work_items.id]
-  label        varchar(200) [not null]
-  fulfilled    boolean      [not null, default: false]
-  note         varchar(255)
-  sort_order   int          [not null, default: 0]
+Table arbetsbegaran {
+  id                  uuid         [pk, default: `gen_random_uuid()`]
+  arende_id           uuid         [not null, unique, ref: - arenden.id]
+  bestallare_id       uuid         [not null, ref: > users.id]
 
-  Note: 'Förutsättningar / checklista (gate-punkter).'
+  utkast_namn         varchar(200) [note: 'Namn på utkast innan inskick']
+  utkast_skapad_at    timestamptz
+
+  kontakt_namn        varchar(120) [not null, note: 'Förifylls från session, skrivskyddad']
+  kontakt_email       varchar(255) [not null]
+
+  anlaggning          varchar(200) [not null, note: 'Fritext (obligatorisk)']
+  objekt              varchar(160) [note: 'Objekt/MFU-ref, fritext (valfri)']
+  beskrivning         text         [not null]
+  onskat_startdatum   date         [not null]
+  varaktighet_timmar  numeric(6,1) [note: 'Valfri']
+  risk_niva           risk_niva    [not null]
+  risk_beskrivning    text
+
+  riskanalys_bifogad  boolean      [not null, default: false]
+  arbetsschema_godkant boolean     [not null, default: false]
+
+  godkand_av          uuid         [ref: > users.id]
+  godkand_at          timestamptz
+  nekad_av            uuid         [ref: > users.id]
+  nekad_at            timestamptz
+  nekad_kommentar     text
+
+  created_at          timestamptz  [not null, default: `now()`]
+  updated_at          timestamptz  [not null, default: `now()`]
+
+  Note: 'Arbetsbegäran-delen av ärendet.'
 }
 
-Table activity_entries {
-  id           uuid        [pk, default: `gen_random_uuid()`]
-  work_item_id uuid        [not null, ref: > work_items.id]
-  actor_id     uuid        [ref: > users.id, note: 'Null när aktören är "System"']
-  actor_name   varchar(120) [not null, note: 'Snapshot av namn/System vid tillfället']
-  role         user_role   [not null]
-  action       text        [not null]
-  comment      text
-  created_at   timestamptz [not null, default: `now()`]
+// ---------- Driftorder (1:1 med ärende) ----------
+
+Table driftorder {
+  id                    uuid         [pk, default: `gen_random_uuid()`]
+  arende_id             uuid         [not null, unique, ref: - arenden.id]
+
+  do_nummer             varchar(40)  [note: 'Anges manuellt av DL1 (obligatoriskt före kontroll)']
+  sammanfattning        text
+  skapad_av             uuid         [not null, ref: > users.id, note: 'DL1']
+  planerat_startdatum   date
+
+  word_sharepoint_url   text         [note: 'Länk till .docx i SharePoint']
+  word_item_id          varchar(120) [note: 'Graph drive item-id']
+
+  kontrollerad_av       uuid         [ref: > users.id, note: 'DL2 – får ej vara samma som skapad_av']
+  kontrollerad_at       timestamptz
+  komplettering_kommentar text       [note: 'Obligatorisk vid begäran om komplettering']
+
+  utfors_av             uuid         [ref: > users.id]
+  utfors_at             timestamptz
+  slutford_av           uuid         [ref: > users.id]
+  slutford_at           timestamptz
+
+  ar_utkast             boolean      [not null, default: true]
+  created_at            timestamptz  [not null, default: `now()`]
+  updated_at            timestamptz  [not null, default: `now()`]
+
+  Note: 'Driftorder-delen av ärendet. Skapas från godkänd AB.'
+}
+
+// ---------- Aktörer på ett ärende ----------
+
+Table arende_aktorer {
+  id         uuid        [pk, default: `gen_random_uuid()`]
+  arende_id  uuid        [not null, ref: > arenden.id]
+  roll       aktor_roll  [not null]
+  user_id    uuid        [ref: > users.id, note: 'Satt när aktören finns i users (delgivna)']
+  namn       varchar(120) [not null, note: 'Fritext för kopplingsledare/-biträde tills vidare']
+  epost      varchar(255)
+  created_at timestamptz [not null, default: `now()`]
 
   Indexes {
-    (work_item_id, created_at)
+    (arende_id, roll)
   }
-  Note: 'Aktivitetslogg / historik.'
+  Note: 'Kopplingsledare, kopplingsbiträde, elsäkerhetsledare, delgivna.'
 }
 
-Table attachments {
-  id           uuid         [pk, default: `gen_random_uuid()`]
-  work_item_id uuid         [not null, ref: > work_items.id]
-  name         varchar(255) [not null]
-  file_type    varchar(40)  [not null, note: 'word, pdf, ...']
-  size_bytes   bigint
-  storage_url  text         [not null]
-  version      int          [not null, default: 1]
-  uploaded_by  uuid         [not null, ref: > users.id]
-  uploaded_at  timestamptz  [not null, default: `now()`]
+// ---------- Bilagor (hör till AB eller DO) ----------
 
-  Note: 'Bifogade filer, t.ex. Word-dokument för en driftorder.'
-}
-
-Table document_versions {
-  id           uuid            [pk, default: `gen_random_uuid()`]
-  work_item_id uuid            [not null, ref: > work_items.id]
-  name         varchar(255)    [not null]
-  version      int             [not null, default: 1]
-  format       document_format [not null]
-  storage_url  text
-  generated_by varchar(120)    [not null, note: 'System eller användarnamn']
-  generated_at timestamptz     [not null, default: `now()`]
+Table bilagor {
+  id           uuid          [pk, default: `gen_random_uuid()`]
+  arende_id    uuid          [not null, ref: > arenden.id]
+  agare        bilaga_agare  [not null, note: 'Om bilagan hör till AB eller DO']
+  namn         varchar(255)  [not null]
+  fil_typ      varchar(40)   [not null, note: 'docx, pdf, ...']
+  storlek_bytes bigint
+  sharepoint_url text        [not null]
+  version      int           [not null, default: 1, note: 'Tidigare versioner bevaras']
+  uppladdad_av uuid          [not null, ref: > users.id]
+  uppladdad_at timestamptz   [not null, default: `now()`]
 
   Indexes {
-    (work_item_id, version)
+    (arende_id, agare)
   }
-  Note: 'Genererade dokumentversioner (ARB.BEG #1001 v1, v2 ...).'
+  Note: 'Bifogade filer. DO:ns Word-dokument lagras i SharePoint.'
 }
 
-Table approvals {
-  id            uuid        [pk, default: `gen_random_uuid()`]
-  work_item_id  uuid        [not null, ref: > work_items.id]
-  role          user_role   [not null, note: 'Vilken roll som ska godkänna']
-  approver_id   uuid        [ref: > users.id]
-  approver_name varchar(120) [not null]
-  approved      boolean     [not null, default: false]
-  decided_at    timestamptz
-  sort_order    int         [not null, default: 0]
+// ---------- Audit-logg ----------
 
-  Note: 'Godkännare per ärende och deras beslut.'
-}
-
-Table notifications {
-  id           uuid        [pk, default: `gen_random_uuid()`]
-  recipient_id uuid        [not null, ref: > users.id]
-  work_item_id uuid        [ref: > work_items.id]
-  type         varchar(60) [not null, note: 't.ex. komplettering_begard']
-  message      text        [not null]
-  read         boolean     [not null, default: false]
-  created_at   timestamptz [not null, default: `now()`]
+Table audit_log {
+  id          uuid          [pk, default: `gen_random_uuid()`]
+  arende_id   uuid          [not null, ref: > arenden.id]
+  user_id     uuid          [ref: > users.id, note: 'NULL = systemhändelse']
+  handling    varchar(120)  [not null]
+  fran_status arende_status
+  till_status arende_status
+  kommentar   text
+  created_at  timestamptz   [not null, default: `now()`]
 
   Indexes {
-    (recipient_id, read)
+    (arende_id, created_at)
   }
-  Note: 'Notiser, t.ex. till Driftledare 1 när komplettering begärs.'
+  Note: 'Fullständig historik. Visas i omvänd kronologisk ordning.'
+}
+
+// ---------- Notifieringar (en rad per mottagare + händelse) ----------
+
+Table notifieringar {
+  id              uuid        [pk, default: `gen_random_uuid()`]
+  arende_id       uuid        [ref: > arenden.id]
+  mottagare_id    uuid        [not null, ref: > users.id]
+  typ             notis_typ   [not null]
+  meddelande      text        [not null]
+
+  last            boolean     [not null, default: false, note: 'In-app läststatus']
+  last_at         timestamptz
+
+  epost_skickas   boolean     [not null, default: false, note: 'Ska e-post skickas till mottagaren']
+  epost_skickad_at timestamptz
+  epost_fel       text        [note: 'Felmeddelande vid misslyckad e-post']
+
+  created_at      timestamptz [not null, default: `now()`]
+
+  Indexes {
+    (mottagare_id, last)
+    (arende_id)
+  }
+  Note: 'Driver både in-app-notiser (polling) och e-post (kö via pg-boss).'
 }
